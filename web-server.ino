@@ -1,33 +1,10 @@
+#include "html.h"
+
 void handleRoot()
 {
 #define BUFFER_SIZE 1024	
   char temp[BUFFER_SIZE];
-  int sec = millis() / 1000;
-  int min = sec / 60;
-  int hr = min / 60;
-  int day = hr / 24;
-
-  hr = hr % 24;
-
-  snprintf(temp, BUFFER_SIZE - 1,
-           "<html>\
-<head>\
-<meta http-equiv='refresh' content='5'/>\
-<title>%s</title>\
-<style>\
-body { background-color: #cccccc; font-family: Arial, Helvetica, Sans-Serif; Color: #000088; }\
-</style>\
-</head>\
-<body>\
-<h1>Hello from %s</h1>\
-<h3>running WiFiWebServer</h3>\
-<h3>on %s</h3>\
-<p>Uptime: %d d %02d:%02d:%02d</p>\
-<img src=\"/test.svg\" />\
-</body>\
-</html>", BOARD_NAME, BOARD_NAME, SHIELD_TYPE, day, hr, min % 60, sec % 60);
-
-  server.send(200, F("text/html"), temp);
+  server.send(200, F("text/html"), my_html_page.data());
 }
 
 void handleNotFound()
@@ -88,11 +65,6 @@ void setupWebserver()
     status = WiFi.begin(ssid, pass);
   }
   server.on(F("/"), handleRoot);
-  /* server.on(F("/test.svg"), drawGraph); */
-  server.on(F("/inline"), []()
-  {
-    server.send(200, F("text/plain"), F("This works as well"));
-  });
 
   server.onNotFound(handleNotFound);
 

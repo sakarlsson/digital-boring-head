@@ -1,14 +1,9 @@
 #include "defines.h"
+#include <ArduinoJson.h>
 
 WiFiWebServer server(80);
 
-
 int status = WL_IDLE_STATUS;             // the Wi-Fi radio's status
-
-unsigned long previousMillisInfo = 0;     //will store last time Wi-Fi information was updated
-unsigned long previousMillisLED = 0;      // will store the last time LED was updated
-const int intervalInfo = 5000;            // interval at which to update the board information
-
 
 #define SLEEP_PIN 3
 #define MOTOR_PLUS 4
@@ -24,6 +19,10 @@ String currentDir = "";
 void setup() {
   Serial.begin(9600);
 	setupWebserver();
+
+  server.on(F("/goto"), HTTP_PUT, goto_handler);
+  server.on(F("/pos"), pos_handler);
+
 
   pinMode(LED_BUILTIN, OUTPUT);
 	pinMode(MOTOR_PLUS, OUTPUT);
@@ -95,7 +94,7 @@ int speed = 255;
 unsigned long tstop;
 long pos_current = 0;
 long pos_goto = 0;
-
+bool goto_commanded = false;
 
 void stop() {
 	pinMode(MOTOR_MINUS, OUTPUT);
@@ -113,8 +112,7 @@ void run() {
 	running = true;
 }
 
-void goto_pos(long pos) {
-	pos_goto = pos;
+void goto_pos() {
 	if ( pos_goto < pos_current ) {
 		dir = DIR_IN;
 	}	else {
@@ -152,14 +150,45 @@ void run_control() {
 	}
 }
 
+void posfmt(char *buf) {
+	JsonDocument doc;
+	doc["pos_current"] = pos_current;
+	doc["pos_goto"] = pos_goto;
+	doc["pos_current_mm"] = pos_current /  631.7719;
+	serializeJsonPretty(doc, buf, 128);
+}
 
-void printpos(long pos, long pos_goto) {
+void printpos() {
 	char buf[128];
-	sprintf(buf, "Count: %5d, %5d, (%d) Pos: %.3f mm", 
-					pos, 
-					pos_goto, 
-					pos-pos_goto, pos*0.001647); /* 0.001583 e nominell */
+	posfmt(buf);
 	Serial.println(buf);
+}
+
+void pos_handler() {
+    char buf[128];
+    posfmt(buf);
+    String message;
+    message += buf;
+    server.send(200, F("application/json"), message); 
+}
+
+void goto_handler() {
+    if (server.method() != HTTP_PUT) {
+        server.send(405, F("text/plain"), F("Method Not Allowed"));
+        return;
+    }
+    
+    if (!server.hasArg("pos")) {
+        server.send(400, F("text/plain"), F("Missing pos parameter"));
+        return;
+    }
+    
+    float pos_mm = server.arg("pos").toFloat();
+    pos_goto = (int)(pos_mm * 631.7719);
+    
+    goto_pos();
+    
+    server.send(200, F("text/plain"), F("OK"));
 }
 
 void loop() {
@@ -171,12 +200,16 @@ void loop() {
 		int i = get_command();
 		if (i > 0) {
       if (strcmp(cmd[0], "pos") == 0) {
-				printpos(pos_current, pos_goto);
+				printpos();
       } else if (strcmp(cmd[0], "zero") == 0) {
 				pos_current = 0;
 				pos_goto = 0;
+				stop();
+      } else if (strcmp(cmd[0], "stop") == 0) {
+				stop();
       } else if (strcmp(cmd[0], "goto") == 0) {
-				goto_pos(atof(cmd[1]) * 631.7719);
+				pos_goto = atof(cmd[1]) * 631.7719;
+				goto_pos();
 			}
 		}
 
@@ -201,11 +234,16 @@ void loop() {
 
 		tnow = millis();
 
-		if ( stopping && tnow - tstop >= 200 ) {
+		if ( stopping && tnow - tstop >= 250 ) {
 			stopping = false;
-			printpos(pos_current, pos_goto);
+			printpos();
 		}
-		server.handleClient();
+		if ( ! running && ! stopping ) {
+			server.handleClient(); 		/* Can't do this while counting - we will miss counts */
+			if ( goto_commanded ) {
+				goto_commanded = false;
+				goto_pos();
+			}
+		}
 	}
 }
-
