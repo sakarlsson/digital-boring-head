@@ -165,6 +165,20 @@ void printpos() {
 }
 
 void pos_handler() {
+    if (server.method() == HTTP_PUT) {
+        if (!server.hasArg("pos")) {
+            server.send(400, F("text/plain"), F("Missing pos parameter"));
+            return;
+        }
+        
+        float pos_mm = server.arg("pos").toFloat();
+        pos_current = (int)(pos_mm * 631.7719);
+        
+        server.send(200, F("text/plain"), F("OK"));
+        return;
+    }
+    
+    // GET method - return current position
     char buf[128];
     posfmt(buf);
     String message;

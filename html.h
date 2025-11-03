@@ -23,7 +23,7 @@ const std::string my_html_page = R"(<!DOCTYPE html>
             border: 3px solid #333;
             border-radius: 5px;
             margin: 10px 0;
-            letter-spacing: 2px;
+            letter-spacing: 6px;
         }
         .label {
             font-size: 14px;
@@ -33,19 +33,20 @@ const std::string my_html_page = R"(<!DOCTYPE html>
         }
         .control-buttons {
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            flex-direction: row-reverse;
+            align-items: left;
             margin: 15px 0;
         }
         .btn {
             font-size: 24px;
-            padding: 15px 30px;
+            font-family: 'Courier New', monospace;
+            padding: 10px 20px;
             margin: 5px;
             border: 2px solid #333;
             border-radius: 5px;
             background-color: #ddd;
             cursor: pointer;
-            min-width: 80px;
+            min-width: 60px;
         }
         .btn:active {
             background-color: #bbb;
@@ -67,18 +68,28 @@ const std::string my_html_page = R"(<!DOCTYPE html>
     </style>
 </head>
 <body>
-    <div class='label'>Current Position</div>
-    <div class='dro-display' id='currentPos'>00.00</div>
-    
-    <div class='label'>Target Position</div>
-    <div class='dro-display' id='targetPos'>00.00</div>
-    
-    <div class='control-buttons'>
-        <button class='btn' onclick='adjustTarget(0.01)'>+</button>
-        <button class='btn' onclick='adjustTarget(-0.01)'>-</button>
+    <div class='dro-display' id='currentPos'>0.00</div>
+    <div class='dro-display' id='targetPos'>0.00</div>
+    <div class='control-buttons'; margin-bottom: 4px>
+        <div style='display: flex; gap: 5px; margin-bottom: 1px;'>
+            <button class='btn' onclick='adjustTarget(10)'>+</button>
+            <button class='btn' onclick='adjustTarget(1)'>+</button>
+            <button class='btn' onclick='adjustTarget(0.1)'>+</button>
+            <button class='btn' onclick='adjustTarget(0.01)'>+</button>
+        </div>
+    </div>
+    <div class='control-buttons'; margin-top: 4px>
+        <div style='display: flex; gap: 5px;'>
+            <button class='btn' onclick='adjustTarget(-10)'>-</button>
+            <button class='btn' onclick='adjustTarget(-1)'>-</button>
+            <button class='btn' onclick='adjustTarget(-0.1)'>-</button>
+            <button class='btn' onclick='adjustTarget(-0.01)'>-</button>
+        </div>
     </div>
     
     <button class='goto-btn' onclick='goToPosition()'>GO TO</button>
+
+    <button class='goto-btn' onclick='setCurrentPosition()' style='background-color: #2196F3; margin-top: 10px;'>SET CURRENT POSITION</button>
     
     <script>
         let targetValue = 0.00;
@@ -97,6 +108,21 @@ const std::string my_html_page = R"(<!DOCTYPE html>
                         updatePosition();
                     } else {
                         alert('Error sending goto command');
+                    }
+                })
+                .catch(error => {
+                    alert('Network error: ' + error);
+                });
+        }
+
+        function setCurrentPosition() {
+            const url = '/pos?pos=' + targetValue.toFixed(2);
+            fetch(url, { method: 'PUT' })
+                .then(response => {
+                    if (response.ok) {
+                        updatePosition();
+                    } else {
+                        alert('Error setting current position');
                     }
                 })
                 .catch(error => {
