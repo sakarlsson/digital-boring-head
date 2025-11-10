@@ -31,22 +31,16 @@ const std::string my_html_page = R"(<!DOCTYPE html>
             margin-top: 15px;
             margin-bottom: 5px;
         }
-        .control-buttons {
-            display: flex;
-            flex-direction: row-reverse;
-            align-items: left;
-            margin: 15px 0;
-        }
         .btn {
             font-size: 24px;
             font-family: 'Courier New', monospace;
-            padding: 10px 20px;
+            padding: 10px 10px;
             margin: 5px;
             border: 2px solid #333;
             border-radius: 5px;
             background-color: #ddd;
             cursor: pointer;
-            min-width: 60px;
+            min-width: 50px;
         }
         .btn:active {
             background-color: #bbb;
@@ -68,22 +62,26 @@ const std::string my_html_page = R"(<!DOCTYPE html>
     </style>
 </head>
 <body>
-    <div class='dro-display' id='currentPos'>0.00</div>
+    <div class='dro-display' style='display: flex; justify-content: space-between;'><span id='modeIndicator'>r</span> <span id='currentPos'>0.00</span></div>
     <div class='dro-display' id='targetPos'>0.00</div>
-    <div class='control-buttons'; margin-bottom: 4px>
-        <div style='display: flex; gap: 5px; margin-bottom: 1px;'>
-            <button class='btn' onclick='adjustTarget(10)'>+</button>
-            <button class='btn' onclick='adjustTarget(1)'>+</button>
-            <button class='btn' onclick='adjustTarget(0.1)'>+</button>
-            <button class='btn' onclick='adjustTarget(0.01)'>+</button>
+    <div style='margin: 1px 0 4px 0;'>
+        <div style='display: flex; gap: 5px; margin-bottom: 1px; justify-content: space-between;'>
+            <div style='display: flex; gap: 5px; width: 50%'>
+                <button class='btn' onclick='setMode(false)' id='radiusBtn'>r</button>
+                <button class='btn' onclick='adjustTarget(10)'>+</button>
+                <button class='btn' onclick='adjustTarget(1)'>+</button>
+                <button class='btn' onclick='adjustTarget(0.1)'>+</button>
+                <button class='btn' onclick='adjustTarget(0.01)'>+</button>
+            </div>
         </div>
-    </div>
-    <div class='control-buttons'; margin-top: 4px>
-        <div style='display: flex; gap: 5px;'>
-            <button class='btn' onclick='adjustTarget(-10)'>-</button>
-            <button class='btn' onclick='adjustTarget(-1)'>-</button>
-            <button class='btn' onclick='adjustTarget(-0.1)'>-</button>
-            <button class='btn' onclick='adjustTarget(-0.01)'>-</button>
+        <div style='display: flex; gap: 5px; margin-bottom: 1px; justify-content: space-between;'>
+            <div style='display: flex; gap: 5px; width: 50%'>
+                <button class='btn' onclick='setMode(true)' id='diameterBtn'>ø</button>
+                <button class='btn' onclick='adjustTarget(-10)'>-</button>
+                <button class='btn' onclick='adjustTarget(-1)'>-</button>
+                <button class='btn' onclick='adjustTarget(-0.1)'>-</button>
+                <button class='btn' onclick='adjustTarget(-0.01)'>-</button>
+            </div>
         </div>
     </div>
     
@@ -93,11 +91,23 @@ const std::string my_html_page = R"(<!DOCTYPE html>
     
     <script>
         let targetValue = 0.00;
+        let isDiameter = false;
         
         function adjustTarget(delta) {
             targetValue += delta;
             targetValue = Math.round(targetValue * 100) / 100;
-            document.getElementById('targetPos').textContent = targetValue.toFixed(2);
+            updateDisplays();
+        }
+        
+        function setMode(diameter) {
+            isDiameter = diameter;
+            document.getElementById('modeIndicator').textContent = isDiameter ? 'ø' : 'r';
+            updateDisplays();
+        }
+        
+        function updateDisplays() {
+            const multiplier = isDiameter ? 2 : 1;
+            document.getElementById('targetPos').textContent = (targetValue * multiplier).toFixed(2);
         }
         
         function goToPosition() {
@@ -134,8 +144,9 @@ const std::string my_html_page = R"(<!DOCTYPE html>
             fetch('/pos')
                 .then(response => response.json())
                 .then(data => {
-                    const currentMm = data.pos_current_mm.toFixed(2);
-                    document.getElementById('currentPos').textContent = currentMm;
+                    const currentMm = data.pos_current_mm;
+                    const multiplier = isDiameter ? 2 : 1;
+                    document.getElementById('currentPos').textContent = (currentMm * multiplier).toFixed(2);
                 })
                 .catch(error => {
                     console.error('Error fetching position:', error);
@@ -146,6 +157,8 @@ const std::string my_html_page = R"(<!DOCTYPE html>
         setInterval(updatePosition, 2000);
         // Initial position update
         updatePosition();
+        updateDisplays();
     </script>
 </body>
-</html>)";
+</html>
+)";
